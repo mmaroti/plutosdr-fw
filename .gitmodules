@@ -6,7 +6,7 @@
 	path = buildroot
 	url = https://github.com/analogdevicesinc/buildroot.git
 [submodule "linux"]
-	path = linux
+	path = kernel/linux
 	url = https://github.com/analogdevicesinc/linux
 	branch = 2018_R1
 [submodule "hdl"]

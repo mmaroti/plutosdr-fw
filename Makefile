@@ -17,13 +17,11 @@ endif
 TOOLCHAIN_PATH = $(shell dirname $(shell dirname $(shell which $(CROSS_COMPILE)gcc)))
 # $(info TOOLCHAIN_PATH is $(TOOLCHAIN_PATH))
 
-NCORES = $(shell grep -c ^processor /proc/cpuinfo)
-VSUBDIRS = hdl buildroot linux u-boot-xlnx
+VSUBDIRS = hdl buildroot kernel/linux u-boot-xlnx
 
 VERSION=$(shell git describe --abbrev=4 --dirty --always --tags)
 UBOOT_VERSION=$(shell echo -n "PlutoSDR " && cd u-boot-xlnx && git describe --abbrev=0 --dirty --always --tags)
 
-TARGET_DTS_FILES:= zynq-pluto-sdr.dtb zynq-pluto-sdr-revb.dtb zynq-pluto-sdr-revc.dtb
 COMPLETE_NAME:=PlutoSDR
 ZIP_ARCHIVE_PREFIX:=plutosdr
 DEVICE_VID:=0x0456
@@ -36,9 +34,6 @@ TARGETS += build/uboot-env.dfu jtag-bootstrap
 all: clean-build $(TARGETS) zip-all legal-info
 
 .NOTPARALLEL: all
-
-TARGET_DTS_FILES:=$(foreach dts,$(TARGET_DTS_FILES),build/$(dts))
-# $(info TARGET_DTS_FILES is $(TARGET_DTS_FILES))
 
 build:
 	mkdir -p $@
@@ -63,29 +58,12 @@ build/uboot-env.txt: u-boot-xlnx/u-boot | build
 build/uboot-env.bin: build/uboot-env.txt
 	u-boot-xlnx/tools/mkenvimage -s 0x20000 -o $@ $<
 
-### Linux ###
-
-linux/arch/arm/boot/zImage:
-	make -C linux ARCH=arm zynq_pluto_defconfig
-	make -C linux -j $(NCORES) ARCH=arm CROSS_COMPILE=$(CROSS_COMPILE) zImage UIMAGE_LOADADDR=0x8000
-
-.PHONY: linux/arch/arm/boot/zImage
-
-
-build/zImage: linux/arch/arm/boot/zImage  | build
-	cp $< $@
-
-### Device Tree ###
-
-linux/arch/arm/boot/dts/%.dtb: linux/arch/arm/boot/dts/%.dts  linux/arch/arm/boot/dts/zynq-pluto-sdr.dtsi
-	make -C linux -j $(NCORES) ARCH=arm CROSS_COMPILE=$(CROSS_COMPILE) $(notdir $@)
-
-build/%.dtb: linux/arch/arm/boot/dts/%.dtb | build
-	cp $< $@
+kernel/build:
+	make -C kernel CROSS_COMPILE=$(CROSS_COMPILE) all
 
 ### Buildroot ###
 
-buildroot/output/images/rootfs.cpio.gz:
+buildroot/output/images/rootfs.cpio.gz: | build
 	@echo device-fw $(VERSION)> $(CURDIR)/buildroot/board/pluto/VERSIONS
 	@$(foreach dir,$(VSUBDIRS),echo $(dir) $(shell cd $(dir) && git describe --abbrev=4 --dirty --always --tags) >> $(CURDIR)/buildroot/board/pluto/VERSIONS;)
 	make -C buildroot ARCH=arm zynq_pluto_defconfig
@@ -99,10 +77,10 @@ buildroot/output/images/rootfs.cpio.gz:
 build/rootfs.cpio.gz: buildroot/output/images/rootfs.cpio.gz | build
 	cp $< $@
 
-build/pluto.itb: u-boot-xlnx/tools/mkimage build/zImage build/rootfs.cpio.gz $(TARGET_DTS_FILES) build/system_top.bit
+build/pluto.itb: u-boot-xlnx/tools/mkimage kernel/build build/rootfs.cpio.gz build/system_top.bit
 	u-boot-xlnx/tools/mkimage -f scripts/pluto.its $@
 
-build/system_top.hdf:  | build
+build/system_top.hdf: | build
 	bash -c "source $(VIVADO_SETTINGS) && make -C hdl/projects/pluto && cp hdl/projects/pluto/pluto.sdk/system_top.hdf $@"
 	unzip -l $@ | grep -q ps7_init || cp hdl/projects/pluto/pluto.srcs/sources_1/bd/system/ip/system_sys_ps7_0/ps7_init* build/
 
@@ -146,7 +124,7 @@ clean-build:
 
 clean:
 	make -C u-boot-xlnx clean
-	make -C linux clean
+	make -C kernel clean
 	make -C buildroot clean
 	make -C hdl clean
 	rm -f $(notdir $(wildcard build/*))
