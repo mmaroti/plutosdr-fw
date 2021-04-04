@@ -11,7 +11,7 @@ $(error Could not find $(VIVADO_SETTINGS))
 endif
 
 ifeq (, $(shell which dfu-suffix))
-$(error Could dfu-utils in PATH")
+$(error Could not find dfu-utils in PATH")
 endif
 
 UBOOT_VERSION=$(shell echo -n "PlutoSDR " && cd u-boot-xlnx && git describe --abbrev=0 --dirty --always --tags)
@@ -57,16 +57,13 @@ kernel/build:
 rootfs/build:
 	make -C rootfs CROSS_COMPILE=$(CROSS_COMPILE) all
 
+fpga/build:
+	make -C fpga VIVADO_SETTINGS=$(VIVADO_SETTINGS) all
+
 build/pluto.itb: u-boot-xlnx/tools/mkimage kernel/build rootfs/build build/system_top.bit
 	u-boot-xlnx/tools/mkimage -f scripts/pluto.its $@
 
-build/system_top.hdf: | build
-	bash -c "source $(VIVADO_SETTINGS) && make -C hdl/projects/pluto && cp hdl/projects/pluto/pluto.sdk/system_top.hdf $@"
-	unzip -l $@ | grep -q ps7_init || cp hdl/projects/pluto/pluto.srcs/sources_1/bd/system/ip/system_sys_ps7_0/ps7_init* build/
-
-### TODO: Build system_top.hdf from src if dl fails - need 2016.2 for that ...
-
-build/sdk/fsbl/Release/fsbl.elf build/sdk/hw_0/system_top.bit : build/system_top.hdf
+build/sdk/fsbl/Release/fsbl.elf build/sdk/hw_0/system_top.bit: fpga/build
 	rm -Rf build/sdk
 	bash -c "source $(VIVADO_SETTINGS) && xsdk -batch -source scripts/create_fsbl_project.tcl"
 

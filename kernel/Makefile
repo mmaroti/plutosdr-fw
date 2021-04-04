@@ -11,7 +11,7 @@ all: build/zImage build/zynq-pluto-sdr.dtb build/zynq-pluto-sdr-revb.dtb build/z
 
 clean:
 	make -C linux clean
-	rm -rf build
+	rm -Rf build
 
 .PHONY: all clean
 
@@ -20,13 +20,13 @@ linux/arch/arm/boot/zImage:
 	make -C linux -j $(NCORES) ARCH=arm CROSS_COMPILE=$(CROSS_COMPILE) zImage UIMAGE_LOADADDR=0x8000
 
 linux/arch/arm/boot/dts/%.dtb: linux/arch/arm/boot/dts/%.dts linux/arch/arm/boot/dts/zynq-pluto-sdr.dtsi
-	make -C linux -j $(NCORES) ARCH=arm CROSS_COMPILE=$(CROSS_COMPILE) $(notdir $@)
+	make -C linux -j ARCH=arm CROSS_COMPILE=$(CROSS_COMPILE) $(notdir $@)
 
 build:
 	mkdir -p $@
 
-build/zImage: linux/arch/arm/boot/zImage build
+build/zImage: linux/arch/arm/boot/zImage | build
 	cp $< $@
 
-build/%.dtb: linux/arch/arm/boot/dts/%.dtb build
+build/%.dtb: linux/arch/arm/boot/dts/%.dtb | build
 	cp $< $@
