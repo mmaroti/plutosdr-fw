@@ -14,24 +14,17 @@ ifeq (, $(shell which dfu-suffix))
 $(error Could dfu-utils in PATH")
 endif
 
-TOOLCHAIN_PATH = $(shell dirname $(shell dirname $(shell which $(CROSS_COMPILE)gcc)))
-# $(info TOOLCHAIN_PATH is $(TOOLCHAIN_PATH))
-
-VSUBDIRS = hdl buildroot kernel/linux u-boot-xlnx
-
-VERSION=$(shell git describe --abbrev=4 --dirty --always --tags)
 UBOOT_VERSION=$(shell echo -n "PlutoSDR " && cd u-boot-xlnx && git describe --abbrev=0 --dirty --always --tags)
 
-COMPLETE_NAME:=PlutoSDR
 ZIP_ARCHIVE_PREFIX:=plutosdr
 DEVICE_VID:=0x0456
 DEVICE_PID:=0xb673
 
 TARGETS = build/pluto.dfu build/pluto.frm
 TARGETS += build/boot.dfu build/boot.frm 
-TARGETS += build/uboot-env.dfu jtag-bootstrap
+TARGETS += build/uboot-env.dfu
 
-all: clean-build $(TARGETS) zip-all legal-info
+all: clean-build $(TARGETS)
 
 .NOTPARALLEL: all
 
@@ -61,23 +54,10 @@ build/uboot-env.bin: build/uboot-env.txt
 kernel/build:
 	make -C kernel CROSS_COMPILE=$(CROSS_COMPILE) all
 
-### Buildroot ###
+rootfs/build:
+	make -C rootfs CROSS_COMPILE=$(CROSS_COMPILE) all
 
-buildroot/output/images/rootfs.cpio.gz: | build
-	@echo device-fw $(VERSION)> $(CURDIR)/buildroot/board/pluto/VERSIONS
-	@$(foreach dir,$(VSUBDIRS),echo $(dir) $(shell cd $(dir) && git describe --abbrev=4 --dirty --always --tags) >> $(CURDIR)/buildroot/board/pluto/VERSIONS;)
-	make -C buildroot ARCH=arm zynq_pluto_defconfig
-	make -C buildroot legal-info
-	scripts/legal_info_html.sh "$(COMPLETE_NAME)" "$(CURDIR)/buildroot/board/pluto/VERSIONS"
-	cp build/LICENSE.html buildroot/board/pluto/msd/LICENSE.html
-	make -C buildroot TOOLCHAIN_EXTERNAL_INSTALL_DIR=$(TOOLCHAIN_PATH) ARCH=arm CROSS_COMPILE=$(CROSS_COMPILE) BUSYBOX_CONFIG_FILE=$(CURDIR)/buildroot/board/pluto/busybox-1.25.0.config all
-
-.PHONY: buildroot/output/images/rootfs.cpio.gz
-
-build/rootfs.cpio.gz: buildroot/output/images/rootfs.cpio.gz | build
-	cp $< $@
-
-build/pluto.itb: u-boot-xlnx/tools/mkimage kernel/build build/rootfs.cpio.gz build/system_top.bit
+build/pluto.itb: u-boot-xlnx/tools/mkimage kernel/build rootfs/build build/system_top.bit
 	u-boot-xlnx/tools/mkimage -f scripts/pluto.its $@
 
 build/system_top.hdf: | build
@@ -125,13 +105,10 @@ clean-build:
 clean:
 	make -C u-boot-xlnx clean
 	make -C kernel clean
-	make -C buildroot clean
+	make -C rootfs clean
 	make -C hdl clean
 	rm -f $(notdir $(wildcard build/*))
 	rm -rf build/*
-
-zip-all: $(TARGETS)
-	zip -j build/$(ZIP_ARCHIVE_PREFIX)-fw-$(VERSION).zip $^
 
 dfu-pluto: build/pluto.dfu
 	dfu-util -D build/pluto.dfu -a firmware.dfu
@@ -155,16 +132,6 @@ dfu-ram: build/pluto.dfu
 	sleep 7
 	dfu-util -D build/pluto.dfu -a firmware.dfu
 	dfu-util -e
-
-jtag-bootstrap: build/u-boot.elf build/sdk/hw_0/ps7_init.tcl build/sdk/hw_0/system_top.bit scripts/run.tcl
-	$(CROSS_COMPILE)strip build/u-boot.elf
-	zip -j build/$(ZIP_ARCHIVE_PREFIX)-$@-$(VERSION).zip $^
-
-sysroot: buildroot/output/images/rootfs.cpio.gz
-	tar czfh build/sysroot-$(VERSION).tar.gz --hard-dereference --exclude=usr/share/man -C buildroot/output staging
-
-legal-info: buildroot/output/images/rootfs.cpio.gz
-	tar czvf build/legal-info-$(VERSION).tar.gz -C buildroot/output legal-info
 
 git-update-all:
 	git submodule update --recursive --remote

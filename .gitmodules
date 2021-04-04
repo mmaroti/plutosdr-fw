@@ -3,7 +3,7 @@
 	url = https://github.com/analogdevicesinc/u-boot-xlnx.git
 	branch = pluto
 [submodule "buildroot"]
-	path = buildroot
+	path = rootfs/buildroot
 	url = https://github.com/analogdevicesinc/buildroot.git
 [submodule "linux"]
 	path = kernel/linux

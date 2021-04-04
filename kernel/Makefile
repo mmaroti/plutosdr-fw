@@ -10,6 +10,7 @@ NCORES = $(shell grep -c ^processor /proc/cpuinfo)
 all: build/zImage build/zynq-pluto-sdr.dtb build/zynq-pluto-sdr-revb.dtb build/zynq-pluto-sdr-revc.dtb
 
 clean:
+	make -C linux clean
 	rm -rf build
 
 .PHONY: all clean
@@ -21,10 +22,11 @@ linux/arch/arm/boot/zImage:
 linux/arch/arm/boot/dts/%.dtb: linux/arch/arm/boot/dts/%.dts linux/arch/arm/boot/dts/zynq-pluto-sdr.dtsi
 	make -C linux -j $(NCORES) ARCH=arm CROSS_COMPILE=$(CROSS_COMPILE) $(notdir $@)
 
-build/zImage: linux/arch/arm/boot/zImage
-	mkdir -p build
+build:
+	mkdir -p $@
+
+build/zImage: linux/arch/arm/boot/zImage build
 	cp $< $@
 
-build/%.dtb: linux/arch/arm/boot/dts/%.dtb
-	mkdir -p build
+build/%.dtb: linux/arch/arm/boot/dts/%.dtb build
 	cp $< $@

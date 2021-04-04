@@ -249,7 +249,7 @@ html_header "${TARGET} Legal Information"
 html_h1 "Legal Information"
 html_h1 "${TARGET} Firmware $(get_version device-fw)"
 
-convert_md2html LICENSE.md >> ${FILE}
+convert_md2html ../LICENSE.md >> ${FILE}
 
 echo "<div class=\"boxed\">" >> ${FILE}
 html_h2 "Written Offer"
@@ -282,7 +282,7 @@ fi
 html_h2 "NO WARRANTY"
 
 echo "<pre>" >> ${FILE}
-cat LICENSE.md | sed  -n '1,/# NO WARRANTY/!p' | sed "1d" >> ${FILE}
+cat ../LICENSE.md | sed  -n '1,/# NO WARRANTY/!p' | sed "1d" >> ${FILE}
 echo "</pre>" >> ${FILE}
 
 ### Table of packages
@@ -328,13 +328,13 @@ html_hr
 html_h1_id "Package: linux" "$((var++))"
 package_list_items $(get_version linux) "GPLv2" "https://github.com/analogdevicesinc/linux"
 html_h2 "License:"
-html_pre_file linux/COPYING
+html_pre_file ../kernel/linux/COPYING
 html_hr
 ### U-Boot
 html_h1_id "Package: u-boot" "$((var++))"
 package_list_items $(get_version u-boot-xlnx) "GPLv2" "https://github.com/analogdevicesinc/u-boot-xlnx"
 html_h2 "License:"
-html_pre_file u-boot-xlnx/Licenses/gpl-2.0.txt
+html_pre_file ../u-boot-xlnx/Licenses/gpl-2.0.txt
 html_hr
 
 #### All other  Buildroot Packages
