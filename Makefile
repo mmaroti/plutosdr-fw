@@ -100,10 +100,10 @@ build/VERSIONS: | build
 	echo linux $(shell cd linux && git describe --dirty --always --tags) >> $@
 	echo u-boot-xlnx $(shell cd u-boot-xlnx && git describe --dirty --always --tags) >> $@
 
-build/LICENSE.html: scripts/legal_info_html.sh build/VERSIONS
+build/LICENSE.html: src/scripts/legal_info_html.sh build/VERSIONS
 	make -C buildroot ARCH=arm zynq_pluto_defconfig
 	make -C buildroot legal-info
-	scripts/legal_info_html.sh "PlutoSDR" "build/VERSIONS"
+	src/scripts/legal_info_html.sh "PlutoSDR" "build/VERSIONS"
 
 buildroot/output/images/rootfs.cpio.gz: build/VERSIONS build/LICENSE.html
 	cp build/VERSIONS buildroot/board/pluto/VERSIONS
@@ -123,8 +123,8 @@ build/system_top.bit: build/system_top.hdf
 	unzip -o $< system_top.bit -d build
 	touch $@
 
-build/pluto.itb: scripts/pluto.its u-boot-xlnx/tools/mkimage build/system_top.bit build/zImage build/zynq-pluto-sdr.dtb build/zynq-pluto-sdr-revb.dtb build/zynq-pluto-sdr-revc.dtb build/rootfs.cpio.gz
-	u-boot-xlnx/tools/mkimage -f scripts/pluto.its $@
+build/pluto.itb: src/scripts/pluto.its u-boot-xlnx/tools/mkimage build/system_top.bit build/zImage build/zynq-pluto-sdr.dtb build/zynq-pluto-sdr-revb.dtb build/zynq-pluto-sdr-revc.dtb build/rootfs.cpio.gz
+	u-boot-xlnx/tools/mkimage -f src/scripts/pluto.its $@
 
 build/pluto.frm: build/pluto.itb
 	md5sum $< | cut -d ' ' -f 1 > $@.md5
@@ -137,8 +137,8 @@ build/pluto.dfu: build/pluto.itb
 
 ### uboot-env.dfu ###
 
-build/uboot-env.txt: scripts/get_default_envs.sh u-boot-xlnx/tools/mkimage | build
-	CROSS_COMPILE=$(CROSS_COMPILE) scripts/get_default_envs.sh > $@
+build/uboot-env.txt: src/scripts/get_default_envs.sh u-boot-xlnx/tools/mkimage | build
+	CROSS_COMPILE=$(CROSS_COMPILE) src/scripts/get_default_envs.sh > $@
 
 build/uboot-env.bin: build/uboot-env.txt
 	u-boot-xlnx/tools/mkenvimage -s 0x20000 -o $@ $<
@@ -153,15 +153,15 @@ build/%.dfu: build/%.bin
 build/u-boot.elf: u-boot-xlnx/tools/mkimage | build
 	cp u-boot-xlnx/u-boot $@
 
-build/sdk/fsbl/Release/fsbl.elf: scripts/create_fsbl_project.tcl build/system_top.hdf build/system_top.bit
+build/sdk/fsbl/Release/fsbl.elf: src/scripts/create_fsbl_project.tcl build/system_top.hdf build/system_top.bit
 	mv build/system_top.bit build/system_top.bit.orig
 	rm -Rf build/sdk
-	bash -c "source $(VIVADO_SETTINGS) && xsdk -batch -source scripts/create_fsbl_project.tcl"
+	bash -c "source $(VIVADO_SETTINGS) && xsdk -batch -source src/scripts/create_fsbl_project.tcl"
 	mv build/system_top.bit.orig build/system_top.bit
 
 build/boot.bin: build/sdk/fsbl/Release/fsbl.elf build/u-boot.elf
 	@echo img:{[bootloader] $^ } > build/boot.bif
 	bash -c "source $(VIVADO_SETTINGS) && bootgen -image build/boot.bif -w -o $@"
 
-build/boot.frm: build/boot.bin build/uboot-env.bin scripts/target_mtd_info.key
+build/boot.frm: build/boot.bin build/uboot-env.bin src/scripts/target_mtd_info.key
 	cat $^ | tee $@ | md5sum | cut -d ' ' -f1 | tee -a $@
