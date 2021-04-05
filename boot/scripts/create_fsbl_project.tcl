@@ -1,12 +1,12 @@
-hsi open_hw_design fpga/build/system_top.hdf
+hsi open_hw_design build/system_top.hdf
 set cpu_name [lindex [hsi get_cells -filter {IP_TYPE==PROCESSOR}] 0]
 
 sdk setws ./build/sdk
-sdk createhw -name hw_0 -hwspec fpga/build/system_top.hdf
+sdk createhw -name hw_0 -hwspec build/system_top.hdf
 
 # Workaround for broken write_sysdev in vivado 2018.2
 catch {
-	set copyfiles [glob ./fpga/build/ps7_init*]
+	set copyfiles [glob ./build/ps7_init*]
 	if {[llength $copyfiles]} {
 		file copy {*}$copyfiles ./build/sdk/hw_0/
 	}

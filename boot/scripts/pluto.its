@@ -17,7 +17,7 @@
 
 		fdt@1 {
 			description = "zynq-pluto-sdr";
-			data = /incbin/("../kernel/build/zynq-pluto-sdr.dtb");
+			data = /incbin/("../build/zynq-pluto-sdr.dtb");
 			type = "flat_dt";
 			arch = "arm";
 			compression = "none";
@@ -25,7 +25,7 @@
 
 		fdt@2 {
 			description = "zynq-pluto-sdr-revb";
-			data = /incbin/("../kernel/build/zynq-pluto-sdr-revb.dtb");
+			data = /incbin/("../build/zynq-pluto-sdr-revb.dtb");
 			type = "flat_dt";
 			arch = "arm";
 			compression = "none";
@@ -33,7 +33,7 @@
 
 		fdt@3 {
 			description = "zynq-pluto-sdr-revc";
-			data = /incbin/("../kernel/build/zynq-pluto-sdr-revc.dtb");
+			data = /incbin/("../build/zynq-pluto-sdr-revc.dtb");
 			type = "flat_dt";
 			arch = "arm";
 			compression = "none";
@@ -53,7 +53,7 @@
 
 		linux_kernel@1 {
 			description = "Linux";
-			data = /incbin/("../kernel/build/zImage");
+			data = /incbin/("../build/zImage");
 			type = "kernel";
 			arch = "arm";
 			os = "linux";
@@ -66,7 +66,7 @@
 		};
 		ramdisk@1 {
 			description = "Ramdisk";
-			data = /incbin/("../rootfs/build/rootfs.cpio.gz");
+			data = /incbin/("../build/rootfs.cpio.gz");
 			type = "ramdisk";
 			arch = "arm";
 			os = "linux";

@@ -1,5 +1,5 @@
 [submodule "u-boot-xlnx"]
-	path = u-boot-xlnx
+	path = boot/u-boot-xlnx
 	url = https://github.com/analogdevicesinc/u-boot-xlnx.git
 	branch = pluto
 [submodule "buildroot"]
