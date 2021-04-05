@@ -83,12 +83,21 @@ build/%.dtb: linux/arch/arm/boot/dts/%.dtb | build
 
 ### rootfs ###
 
-build/VERSIONS: | build
-	echo plutosdr-fw $(shell git describe --abbrev=4 --dirty --always --tags) > $@
-	echo hdl $(shell cd hdl && git describe --abbrev=4 --dirty --always --tags) >> $@
-	echo buildroot $(shell cd buildroot && git describe --abbrev=4 --dirty --always --tags) >> $@
-	echo linux $(shell cd linux && git describe --abbrev=4 --dirty --always --tags) >> $@
-	echo u-boot-xlnx $(shell cd boot/u-boot-xlnx && git describe --abbrev=4 --dirty --always --tags) >> $@
+VERSION_OLD = $(shell test -f build/VERSIONS && head -n 1 build/VERSIONS)
+VERSION_NEW = plutosdr-fw $(shell git describe --abbrev=4 --dirty --always --tags)
+
+build-versions: | build
+ifneq ($(VERSION_OLD),$(VERSION_NEW))
+	echo $(VERSION_NEW) > build/VERSIONS
+	echo hdl $(shell cd hdl && git describe --abbrev=4 --dirty --always --tags) >> build/VERSIONS
+	echo buildroot $(shell cd buildroot && git describe --abbrev=4 --dirty --always --tags) >> build/VERSIONS
+	echo linux $(shell cd linux && git describe --abbrev=4 --dirty --always --tags) >> build/VERSIONS
+	echo u-boot-xlnx $(shell cd u-boot-xlnx && git describe --abbrev=4 --dirty --always --tags) >> build/VERSIONS
+endif
+
+.phony: build-versions
+
+build/VERSIONS: | build-versions
 
 build/LICENSE.html: scripts/legal_info_html.sh build/VERSIONS
 	make -C buildroot ARCH=arm zynq_pluto_defconfig
@@ -98,7 +107,7 @@ build/LICENSE.html: scripts/legal_info_html.sh build/VERSIONS
 buildroot/output/images/rootfs.cpio.gz: build/VERSIONS build/LICENSE.html
 	cp build/VERSIONS buildroot/board/pluto/VERSIONS
 	cp build/LICENSE.html buildroot/board/pluto/msd/LICENSE.html
-	make -C buildroot -j $(NCORES) TOOLCHAIN_EXTERNAL_INSTALL_DIR=$(TOOLCHAIN_PATH) ARCH=arm CROSS_COMPILE=$(CROSS_COMPILE) BUSYBOX_CONFIG_FILE=$(CURDIR)/buildroot/board/pluto/busybox-1.25.0.config all
+	bash -c "source $(VIVADO_SETTINGS) && make -C buildroot -j $(NCORES) ARCH=arm CROSS_COMPILE=$(CROSS_COMPILE) BUSYBOX_CONFIG_FILE=$(CURDIR)/buildroot/board/pluto/busybox-1.25.0.config all"
 
 build/rootfs.cpio.gz: buildroot/output/images/rootfs.cpio.gz | build
 	cp $< $@
