@@ -10,6 +10,7 @@ $(error Could not find $(VIVADO_SETTINGS))
 endif
 
 TOOLCHAIN_GCC = $(shell bash -c "source $(VIVADO_SETTINGS) && which $(CROSS_COMPILE)gcc")
+
 ifeq (, $(TOOLCHAIN_GCC))
 $(error Could not find $(CROSS_COMPILE)gcc in PATH)
 endif
@@ -19,17 +20,18 @@ $(error Could not find dfu-utils in PATH")
 endif
 
 NCORES = $(shell grep -c ^processor /proc/cpuinfo)
-TOOLCHAIN_PATH = $(abspath $(TOOLCHAIN_GCC)/../../)
-UBOOT_VERSION=$(shell echo -n "PlutoSDR " && cd u-boot-xlnx && git describe --abbrev=0 --dirty --always --tags)
-DEVICE_VID:=0x0456
-DEVICE_PID:=0xb673
+UBOOT_VERSION = $(shell echo -n "PlutoSDR " && cd u-boot-xlnx && git describe --dirty --always --tags)
+DEVICE_VID := 0x0456
+DEVICE_PID := 0xb673
 
 $(info VIVADO_SETTINGS is $(VIVADO_SETTINGS))
-$(info TOOLCHAIN_PATH is $(TOOLCHAIN_PATH))
+$(info TOOLCHAIN_GCC is $(TOOLCHAIN_GCC))
 
 # Main targets
 
-all: build/pluto.dfu build/pluto.frm build/boot.dfu build/boot.frm build/uboot-env.dfu
+pluto: build/pluto.dfu build/pluto.frm
+
+all: pluto build/boot.dfu build/boot.frm build/uboot-env.dfu
 
 clean:
 	make -C linux clean
@@ -54,7 +56,7 @@ dfu-ram: build/pluto.dfu
 	dfu-util -D build/pluto.dfu -a firmware.dfu
 	dfu-util -e
 
-.PHONY: all clean dfu-pluto dfu-sf-boot dfu-ram
+.PHONY: pluto all clean dfu-pluto dfu-sf-boot dfu-ram
 
 build:
 	mkdir -p $@
@@ -84,20 +86,19 @@ build/%.dtb: linux/arch/arm/boot/dts/%.dtb | build
 ### rootfs ###
 
 VERSION_OLD = $(shell test -f build/VERSIONS && head -n 1 build/VERSIONS)
-VERSION_NEW = plutosdr-fw $(shell git describe --abbrev=4 --dirty --always --tags)
+VERSION_NEW = plutosdr-fw $(shell git describe --dirty --always --tags)
 
-build-versions: | build
-ifneq ($(VERSION_OLD),$(VERSION_NEW))
-	echo $(VERSION_NEW) > build/VERSIONS
-	echo hdl $(shell cd hdl && git describe --abbrev=4 --dirty --always --tags) >> build/VERSIONS
-	echo buildroot $(shell cd buildroot && git describe --abbrev=4 --dirty --always --tags) >> build/VERSIONS
-	echo linux $(shell cd linux && git describe --abbrev=4 --dirty --always --tags) >> build/VERSIONS
-	echo u-boot-xlnx $(shell cd u-boot-xlnx && git describe --abbrev=4 --dirty --always --tags) >> build/VERSIONS
+ifneq ($(VERSION_OLD), $(VERSION_NEW))
+$(info rm -f build/VERSIONS)
+$(eval $(shell rm -f build/VERSIONS))
 endif
 
-.phony: build-versions
-
-build/VERSIONS: | build-versions
+build/VERSIONS: | build
+	echo $(VERSION_NEW) > $@
+	echo hdl $(shell cd hdl && git describe --dirty --always --tags) >> $@
+	echo buildroot $(shell cd buildroot && git describe --dirty --always --tags) >> $@
+	echo linux $(shell cd linux && git describe --dirty --always --tags) >> $@
+	echo u-boot-xlnx $(shell cd u-boot-xlnx && git describe --dirty --always --tags) >> $@
 
 build/LICENSE.html: scripts/legal_info_html.sh build/VERSIONS
 	make -C buildroot ARCH=arm zynq_pluto_defconfig
@@ -122,7 +123,7 @@ build/system_top.bit: build/system_top.hdf
 	unzip -o $< system_top.bit -d build
 	touch $@
 
-build/pluto.itb: u-boot-xlnx/tools/mkimage build/system_top.bit build/zImage build/zynq-pluto-sdr.dtb build/zynq-pluto-sdr-revb.dtb build/zynq-pluto-sdr-revc.dtb build/rootfs.cpio.gz
+build/pluto.itb: scripts/pluto.its u-boot-xlnx/tools/mkimage build/system_top.bit build/zImage build/zynq-pluto-sdr.dtb build/zynq-pluto-sdr-revb.dtb build/zynq-pluto-sdr-revc.dtb build/rootfs.cpio.gz
 	u-boot-xlnx/tools/mkimage -f scripts/pluto.its $@
 
 build/pluto.frm: build/pluto.itb
@@ -136,7 +137,7 @@ build/pluto.dfu: build/pluto.itb
 
 ### uboot-env.dfu ###
 
-build/uboot-env.txt: u-boot-xlnx/tools/mkimage | build
+build/uboot-env.txt: scripts/get_default_envs.sh u-boot-xlnx/tools/mkimage | build
 	CROSS_COMPILE=$(CROSS_COMPILE) scripts/get_default_envs.sh > $@
 
 build/uboot-env.bin: build/uboot-env.txt
@@ -152,7 +153,7 @@ build/%.dfu: build/%.bin
 build/u-boot.elf: u-boot-xlnx/tools/mkimage | build
 	cp u-boot-xlnx/u-boot $@
 
-build/sdk/fsbl/Release/fsbl.elf: build/system_top.hdf build/system_top.bit
+build/sdk/fsbl/Release/fsbl.elf: scripts/create_fsbl_project.tcl build/system_top.hdf build/system_top.bit
 	mv build/system_top.bit build/system_top.bit.orig
 	rm -Rf build/sdk
 	bash -c "source $(VIVADO_SETTINGS) && xsdk -batch -source scripts/create_fsbl_project.tcl"
