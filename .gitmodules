@@ -1,15 +1,13 @@
 [submodule "u-boot-xlnx"]
 	path = boot/u-boot-xlnx
 	url = https://github.com/analogdevicesinc/u-boot-xlnx.git
-	branch = pluto
 [submodule "buildroot"]
 	path = rootfs/buildroot
 	url = https://github.com/analogdevicesinc/buildroot.git
 [submodule "linux"]
 	path = kernel/linux
 	url = https://github.com/analogdevicesinc/linux
-	branch = 2018_R1
 [submodule "hdl"]
 	path = fpga/hdl
 	url = https://github.com/analogdevicesinc/hdl
-	branch = hdl_2018_r1
+	ignore = untracked
