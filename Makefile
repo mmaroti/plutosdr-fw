@@ -2,6 +2,7 @@
 
 VIVADO_SETTINGS ?= /opt/Xilinx/Vivado/2019.1/settings64.sh
 CROSS_COMPILE ?= arm-linux-gnueabihf-
+FPGA_DIR ?= src/fpga0
 
 # Set up variables
 
@@ -9,9 +10,9 @@ ifeq (, $(shell which $(VIVADO_SETTINGS)))
 $(error Could not find $(VIVADO_SETTINGS))
 endif
 
-TOOLCHAIN_GCC = $(shell bash -c "source $(VIVADO_SETTINGS) && which $(CROSS_COMPILE)gcc")
+TOOLCHAIN = $(shell bash -c "source $(VIVADO_SETTINGS) && which $(CROSS_COMPILE)gcc")
 
-ifeq (, $(TOOLCHAIN_GCC))
+ifeq (, $(TOOLCHAIN))
 $(error Could not find $(CROSS_COMPILE)gcc in PATH)
 endif
 
@@ -19,13 +20,13 @@ ifeq (, $(shell which dfu-suffix))
 $(error Could not find dfu-utils in PATH")
 endif
 
-NCORES = $(shell grep -c ^processor /proc/cpuinfo)
-UBOOT_VERSION = $(shell echo -n "PlutoSDR " && cd u-boot-xlnx && git describe --dirty --always --tags)
+NCORES = $(shell nproc)
 DEVICE_VID := 0x0456
 DEVICE_PID := 0xb673
 
 $(info VIVADO_SETTINGS is $(VIVADO_SETTINGS))
-$(info TOOLCHAIN_GCC is $(TOOLCHAIN_GCC))
+$(info TOOLCHAIN is $(TOOLCHAIN))
+$(info FPGA_DIR is $(FPGA_DIR))
 
 # Main targets
 
@@ -36,7 +37,7 @@ all: pluto build/boot.dfu build/boot.frm build/uboot-env.dfu
 clean:
 	make -C linux clean
 	make -C buildroot clean
-	make -C hdl clean
+	make -C $(FPGA_DIR) clean
 	make -C u-boot-xlnx clean
 	rm -Rf build
 
@@ -58,15 +59,21 @@ dfu-ram: build/pluto.dfu
 
 .PHONY: pluto all clean dfu-pluto dfu-sf-boot dfu-ram
 
+# helper targets
+
 build:
 	mkdir -p $@
 
+FORCE:
+
+.PHONY: FORCE
+
 ### fpga ###
 
-build/system_top.hdf: | build
-	bash -c "source $(VIVADO_SETTINGS) && make -C hdl/projects/pluto -j $(NCORES)"
-	cp hdl/projects/pluto/pluto.sdk/system_top.hdf $@
-	cp hdl/projects/pluto/pluto.srcs/sources_1/bd/system/ip/system_sys_ps7_0/ps7_init* build/
+build/system_top.hdf: FORCE | build
+	bash -c "source $(VIVADO_SETTINGS) && make -C $(FPGA_DIR) -j $(NCORES)"
+	cp -a $(FPGA_DIR)/build/system_top.hdf $@
+	cp -a $(FPGA_DIR)/build/ps7_init* build/
 
 ### kernel ###
 
@@ -88,17 +95,14 @@ build/%.dtb: linux/arch/arm/boot/dts/%.dtb | build
 VERSION_OLD = $(shell test -f build/VERSIONS && head -n 1 build/VERSIONS)
 VERSION_NEW = plutosdr-fw $(shell git describe --dirty --always --tags)
 
+build/VERSIONS: FORCE | build
 ifneq ($(VERSION_OLD), $(VERSION_NEW))
-$(info rm -f build/VERSIONS)
-$(eval $(shell rm -f build/VERSIONS))
-endif
-
-build/VERSIONS: | build
 	echo $(VERSION_NEW) > $@
 	echo hdl $(shell cd hdl && git describe --dirty --always --tags) >> $@
 	echo buildroot $(shell cd buildroot && git describe --dirty --always --tags) >> $@
 	echo linux $(shell cd linux && git describe --dirty --always --tags) >> $@
 	echo u-boot-xlnx $(shell cd u-boot-xlnx && git describe --dirty --always --tags) >> $@
+endif
 
 build/LICENSE.html: src/scripts/legal_info_html.sh build/VERSIONS
 	make -C buildroot ARCH=arm zynq_pluto_defconfig
@@ -114,6 +118,8 @@ build/rootfs.cpio.gz: buildroot/output/images/rootfs.cpio.gz | build
 	cp $< $@
 
 ### pluto.dfu ###
+
+UBOOT_VERSION = $(shell echo -n "PlutoSDR " && cd u-boot-xlnx && git describe --dirty --always --tags)
 
 u-boot-xlnx/tools/mkimage:
 	make -C u-boot-xlnx ARCH=arm zynq_pluto_defconfig
