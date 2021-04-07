@@ -81,14 +81,18 @@ linux/arch/arm/boot/zImage:
 	make -C linux ARCH=arm zynq_pluto_defconfig
 	bash -c "source $(VIVADO_SETTINGS) && make -C linux -j $(NCORES) ARCH=arm CROSS_COMPILE=$(CROSS_COMPILE) zImage UIMAGE_LOADADDR=0x8000"
 
-linux/arch/arm/boot/dts/%.dtb: linux/arch/arm/boot/dts/%.dts linux/arch/arm/boot/dts/zynq-pluto-sdr.dtsi
-	bash -c "source $(VIVADO_SETTINGS) && make -C linux -j ARCH=arm CROSS_COMPILE=$(CROSS_COMPILE) $(notdir $@)"
-
 build/zImage: linux/arch/arm/boot/zImage | build
 	cp $< $@
 
-build/%.dtb: linux/arch/arm/boot/dts/%.dtb | build
-	cp $< $@
+copydtsi:
+	cp -a $(FPGA_DIR)/*.dtsi linux/arch/arm/boot/dts/
+
+.PHONY: copydtsi
+
+build/%.dtb: $(FPGA_DIR)/%.dts $(wildcard $(FPGA_DIR)/*.dtsi) | copydtsi build
+	cp -a $< linux/arch/arm/boot/dts/
+	bash -c "source $(VIVADO_SETTINGS) && make -C linux ARCH=arm CROSS_COMPILE=$(CROSS_COMPILE) $(notdir $@)"
+	cp -a linux/arch/arm/boot/dts/$(notdir $@) $@
 
 ### rootfs ###
 
