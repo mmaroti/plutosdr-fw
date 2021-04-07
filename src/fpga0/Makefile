@@ -1,16 +1,19 @@
 # This is based on hdl/projects/pluto/Makefile
 
 PROJECT_NAME := pluto
-HDL_PROJECT_PATH := ../../hdl/projects/
-HDL_LIBRARY_PATH := $(HDL_PROJECT_PATH)../library/
+HDL_PROJECT_PATH := $(abspath ../../hdl/projects)
+HDL_LIBRARY_PATH := $(abspath $(HDL_PROJECT_PATH)/../library)
 
-M_DEPS += $(HDL_PROJECT_PATH)common/xilinx/adi_fir_filter_constr.xdc
-M_DEPS += $(HDL_PROJECT_PATH)common/xilinx/adi_fir_filter_bd.tcl
-M_DEPS += $(HDL_LIBRARY_PATH)xilinx/common/ad_iobuf.v
-M_DEPS += $(HDL_LIBRARY_PATH)util_cdc/sync_bits.v
-M_DEPS += $(HDL_LIBRARY_PATH)common/util_pulse_gen.v
-M_DEPS += $(HDL_LIBRARY_PATH)common/ad_bus_mux.v
-M_DEPS += $(HDL_LIBRARY_PATH)axi_ad9361/axi_ad9361_delay.tcl
+$(info HDL_PROJECT_PATH is $(HDL_PROJECT_PATH))
+$(info HDL_LIBRARY_PATH is $(HDL_LIBRARY_PATH))
+
+M_DEPS += $(HDL_PROJECT_PATH)/common/xilinx/adi_fir_filter_constr.xdc
+M_DEPS += $(HDL_PROJECT_PATH)/common/xilinx/adi_fir_filter_bd.tcl
+M_DEPS += $(HDL_LIBRARY_PATH)/xilinx/common/ad_iobuf.v
+M_DEPS += $(HDL_LIBRARY_PATH)/util_cdc/sync_bits.v
+M_DEPS += $(HDL_LIBRARY_PATH)/common/util_pulse_gen.v
+M_DEPS += $(HDL_LIBRARY_PATH)/common/ad_bus_mux.v
+M_DEPS += $(HDL_LIBRARY_PATH)/axi_ad9361/axi_ad9361_delay.tcl
 
 LIB_DEPS += axi_ad9361
 LIB_DEPS += axi_dmac
@@ -19,7 +22,7 @@ LIB_DEPS += util_pack/util_upack2
 
 # This is based on hdl/projects/scripts/project-xilinx.mk
 
-include $(HDL_PROJECT_PATH)../quiet.mk
+include $(HDL_PROJECT_PATH)/../quiet.mk
 
 VIVADO := vivado -mode batch -source
 
@@ -45,13 +48,14 @@ M_DEPS += system_project.tcl
 M_DEPS += system_bd.tcl
 M_DEPS += system_top.v
 M_DEPS += system_constr.xdc
-M_DEPS += $(HDL_PROJECT_PATH)scripts/adi_project_xilinx.tcl
-M_DEPS += $(HDL_PROJECT_PATH)scripts/adi_env.tcl
-M_DEPS += $(HDL_PROJECT_PATH)scripts/adi_board.tcl
+M_DEPS += $(HDL_PROJECT_PATH)/scripts/adi_project_xilinx.tcl
+M_DEPS += $(HDL_PROJECT_PATH)/scripts/adi_env.tcl
+M_DEPS += $(HDL_PROJECT_PATH)/scripts/adi_board.tcl
 
-M_DEPS += $(foreach dep,$(LIB_DEPS),$(HDL_LIBRARY_PATH)$(dep)/component.xml)
+M_DEPS += $(foreach dep,$(LIB_DEPS),$(HDL_LIBRARY_PATH)/$(dep)/component.xml)
 
 .PHONY: all lib clean clean-all
+.NOTPARALLEL:
 
 all: lib $(PROJECT_NAME).sdk/system_top.hdf
 	rm -rf build
@@ -68,7 +72,7 @@ clean:
 
 clean-all: clean
 	@for lib in $(LIB_DEPS); do \
-		$(MAKE) -C $(HDL_LIBRARY_PATH)$${lib} clean; \
+		$(MAKE) -C $(HDL_LIBRARY_PATH)/$${lib} clean; \
 	done
 
 MODE ?= "default"
@@ -85,7 +89,7 @@ $(PROJECT_NAME).sdk/system_top.hdf: $(M_DEPS)
 	else \
 		rm -f reference.dcp; \
 	fi;
-	-rm -rf $(CLEAN_TARGET)
+	rm -rf $(CLEAN_TARGET)
 	$(call build, \
 		$(VIVADO) system_project.tcl, \
 		$(PROJECT_NAME)_vivado.log, \
@@ -93,5 +97,5 @@ $(PROJECT_NAME).sdk/system_top.hdf: $(M_DEPS)
 
 lib:
 	@for lib in $(LIB_DEPS); do \
-		$(MAKE) -C $(HDL_LIBRARY_PATH)$${lib} xilinx || exit $$?; \
+		$(MAKE) -C $(HDL_LIBRARY_PATH)/$${lib} -j1 xilinx || exit $$?; \
 	done

@@ -35,10 +35,10 @@ pluto: build/pluto.dfu build/pluto.frm
 all: pluto build/boot.dfu build/boot.frm build/uboot-env.dfu
 
 clean:
-	make -C linux clean
-	make -C buildroot clean
-	make -C $(FPGA_DIR) clean
-	make -C u-boot-xlnx clean
+	$(MAKE) -C linux clean
+	$(MAKE) -C buildroot clean
+	$(MAKE) -C $(FPGA_DIR) clean
+	$(MAKE) -C u-boot-xlnx clean
 	rm -Rf build
 
 dfu-pluto: build/pluto.dfu
@@ -71,15 +71,15 @@ FORCE:
 ### fpga ###
 
 build/system_top.hdf: FORCE | build
-	bash -c "source $(VIVADO_SETTINGS) && make -C $(FPGA_DIR) -j $(NCORES)"
+	bash -c "source $(VIVADO_SETTINGS) && $(MAKE) -C $(FPGA_DIR) -j1"
 	cp -a $(FPGA_DIR)/build/system_top.hdf $@
 	cp -a $(FPGA_DIR)/build/ps7_init* build/
 
 ### kernel ###
 
 linux/arch/arm/boot/zImage:
-	make -C linux ARCH=arm zynq_pluto_defconfig
-	bash -c "source $(VIVADO_SETTINGS) && make -C linux -j $(NCORES) ARCH=arm CROSS_COMPILE=$(CROSS_COMPILE) zImage UIMAGE_LOADADDR=0x8000"
+	$(MAKE) -C linux ARCH=arm zynq_pluto_defconfig
+	bash -c "source $(VIVADO_SETTINGS) && $(MAKE) -C linux -j $(NCORES) ARCH=arm CROSS_COMPILE=$(CROSS_COMPILE) zImage UIMAGE_LOADADDR=0x8000"
 
 build/zImage: linux/arch/arm/boot/zImage | build
 	cp $< $@
@@ -91,7 +91,7 @@ copydtsi:
 
 build/%.dtb: $(FPGA_DIR)/%.dts $(wildcard $(FPGA_DIR)/*.dtsi) | copydtsi build
 	cp -a $< linux/arch/arm/boot/dts/
-	bash -c "source $(VIVADO_SETTINGS) && make -C linux ARCH=arm CROSS_COMPILE=$(CROSS_COMPILE) $(notdir $@)"
+	bash -c "source $(VIVADO_SETTINGS) && $(MAKE) -C linux ARCH=arm CROSS_COMPILE=$(CROSS_COMPILE) $(notdir $@)"
 	cp -a linux/arch/arm/boot/dts/$(notdir $@) $@
 
 ### rootfs ###
@@ -109,14 +109,14 @@ ifneq ($(VERSION_OLD), $(VERSION_NEW))
 endif
 
 build/LICENSE.html: src/scripts/legal_info_html.sh build/VERSIONS
-	make -C buildroot ARCH=arm zynq_pluto_defconfig
-	make -C buildroot legal-info
+	$(MAKE) -C buildroot ARCH=arm zynq_pluto_defconfig
+	$(MAKE) -C buildroot legal-info
 	src/scripts/legal_info_html.sh "PlutoSDR" "build/VERSIONS"
 
 buildroot/output/images/rootfs.cpio.gz: build/VERSIONS build/LICENSE.html
 	cp build/VERSIONS buildroot/board/pluto/VERSIONS
 	cp build/LICENSE.html buildroot/board/pluto/msd/LICENSE.html
-	bash -c "source $(VIVADO_SETTINGS) && make -C buildroot -j $(NCORES) ARCH=arm CROSS_COMPILE=$(CROSS_COMPILE) BUSYBOX_CONFIG_FILE=$(CURDIR)/buildroot/board/pluto/busybox-1.25.0.config all"
+	bash -c "source $(VIVADO_SETTINGS) && $(MAKE) -C buildroot -j $(NCORES) ARCH=arm CROSS_COMPILE=$(CROSS_COMPILE) BUSYBOX_CONFIG_FILE=$(CURDIR)/buildroot/board/pluto/busybox-1.25.0.config all"
 
 build/rootfs.cpio.gz: buildroot/output/images/rootfs.cpio.gz | build
 	cp $< $@
@@ -126,8 +126,8 @@ build/rootfs.cpio.gz: buildroot/output/images/rootfs.cpio.gz | build
 UBOOT_VERSION = $(shell echo -n "PlutoSDR " && cd u-boot-xlnx && git describe --dirty --always --tags)
 
 u-boot-xlnx/tools/mkimage:
-	make -C u-boot-xlnx ARCH=arm zynq_pluto_defconfig
-	bash -c "source $(VIVADO_SETTINGS) && make -C u-boot-xlnx -j $(NCORES) ARCH=arm CROSS_COMPILE=$(CROSS_COMPILE) UBOOTVERSION=\"$(UBOOT_VERSION)\""
+	$(MAKE) -C u-boot-xlnx ARCH=arm zynq_pluto_defconfig
+	bash -c "source $(VIVADO_SETTINGS) && $(MAKE) -C u-boot-xlnx -j $(NCORES) ARCH=arm CROSS_COMPILE=$(CROSS_COMPILE) UBOOTVERSION=\"$(UBOOT_VERSION)\""
 
 build/system_top.bit: build/system_top.hdf
 	unzip -o $< system_top.bit -d build
