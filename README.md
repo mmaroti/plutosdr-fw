@@ -22,7 +22,10 @@ Please install Vivado 2019.1 first, then run these commands:
 
  * Updating your local repository: `git pull --recurse-submodules`.
 
- * Programming the ADALM Pluto: `make dfu-ram` or `make dfu-pluto`.
+ * Programming the ADALM Pluto: Make sure that you copy the `src/scripts/53-adi-plutosdr-usb.rules` 
+ file to `/etc/udev/rules.d` to have user access to the pluto (otherwise you need run the following 
+ commands as root). You can upload the new image with the `make dfu-ram` or `make dfu-pluto` 
+ commands.
 
  * Main targets
  

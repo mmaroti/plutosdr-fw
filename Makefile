@@ -55,7 +55,7 @@ dfu-ram: build/pluto.dfu
 	sshpass -p analog ssh root@pluto '/usr/sbin/device_reboot ram;'
 	sleep 7
 	dfu-util -D build/pluto.dfu -a firmware.dfu
-	dfu-util -e
+	dfu-util -e -a firmware.dfu
 
 .PHONY: pluto all clean dfu-pluto dfu-sf-boot dfu-ram
 
@@ -97,7 +97,7 @@ build/%.dtb: $(FPGA_DIR)/%.dts $(wildcard $(FPGA_DIR)/*.dtsi) | copydtsi build
 ### rootfs ###
 
 VERSION_OLD = $(shell test -f build/VERSIONS && head -n 1 build/VERSIONS)
-VERSION_NEW = plutosdr-fw $(shell git describe --dirty --always --tags)
+VERSION_NEW = device-fw $(shell git describe --dirty --always --tags)
 
 build/VERSIONS: FORCE | build
 ifneq ($(VERSION_OLD), $(VERSION_NEW))
