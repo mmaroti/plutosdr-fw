@@ -18,6 +18,7 @@
  */
 
 #include <iio.h>
+#include <unistd.h>
 #include <cassert>
 #include <chrono>
 #include <csignal>
@@ -30,15 +31,51 @@ static void handle_sig(int) { stop = true; }
 
 int main(int argc, char** argv)
 {
+    const char* context_uri = "local:";
+    float samp_rate = 5.0f;
+    float frequency = 2.4f;
+    float bandwidth = 4.0f;
+    unsigned int buff_size = 1024;
+
+    int opt;
+    while ((opt = getopt(argc, argv, "u:r:f:w:b:h")) != -1) {
+        switch (opt) {
+        case 'u':
+            context_uri = optarg;
+            break;
+        case 'r':
+            samp_rate = std::atof(optarg);
+            break;
+        case 'f':
+            frequency = std::atof(optarg);
+            break;
+        case 'w':
+            bandwidth = std::atof(optarg);
+            break;
+        case 'b':
+            buff_size = (unsigned int)std::max(1, std::atoi(optarg));
+            break;
+        case 'h':
+        default:
+            std::cerr << "Usage: ad9361_rx [-options]\n"
+                      << "\t-u iio context URI (default: " << context_uri << ")\n"
+                      << "\t-r sampling rate in Msps (default " << samp_rate << ")\n"
+                      << "\t-f center frequency in GHz (default " << frequency << ")\n"
+                      << "\t-w rx bandwidth in MHz (default " << bandwidth << ")\n"
+                      << "\t-b buffer size in 1k samples (default " << buff_size << ")\n"
+                      << "\t-h prints this help message\n";
+            return 1;
+        }
+    }
+
     signal(SIGINT, handle_sig);
 
     std::cout << "Creating IIO context" << std::endl;
-    struct iio_context* context = NULL;
-    if (argc == 1)
-        context = iio_create_default_context();
-    else if (argc == 2)
-        context = iio_create_context_from_uri(argv[1]);
-    assert(context != nullptr);
+    struct iio_context* context = iio_create_context_from_uri(context_uri);
+    if (context == nullptr) {
+        std::cerr << "Unknown context: " << context_uri << std::endl;
+        return 1;
+    }
 
     std::cout << "Finding ad9361-phy device" << std::endl;
     struct iio_device* phydev = iio_context_find_device(context, "ad9361-phy");
@@ -51,20 +88,20 @@ int main(int argc, char** argv)
     ssize_t ret = iio_channel_attr_write(chn, "rf_port_select", "A_BALANCED");
     assert(ret >= 0);
 
-    std::cout << "Setting rx bandwidth to 5.0 MHz" << std::endl;
-    ret = iio_channel_attr_write_longlong(chn, "rf_bandwidth", 5.0e6);
+    std::cout << "Setting rx bandwidth to " << bandwidth << " MHz" << std::endl;
+    ret = iio_channel_attr_write_longlong(chn, "rf_bandwidth", bandwidth * 1e6f);
     assert(ret >= 0);
 
-    std::cout << "Setting sampling frequency to 20.0 Msps" << std::endl;
-    ret = iio_channel_attr_write_longlong(chn, "sampling_frequency", 20.0e6);
+    std::cout << "Setting sampling frequency to " << samp_rate << " Msps" << std::endl;
+    ret = iio_channel_attr_write_longlong(chn, "sampling_frequency", samp_rate * 1e6f);
     assert(ret >= 0);
 
     std::cout << "Finding ad9361-phy rx local oscillator channel" << std::endl;
     chn = iio_device_find_channel(phydev, "altvoltage0", true);
     assert(chn != nullptr);
 
-    std::cout << "Setting center frequency to 2.5 GHz" << std::endl;
-    ret = iio_channel_attr_write_longlong(chn, "frequency", 2.5e9);
+    std::cout << "Setting center frequency to " << frequency << " GHz" << std::endl;
+    ret = iio_channel_attr_write_longlong(chn, "frequency", frequency * 1e9f);
     assert(ret >= 0);
     (void)ret;
 
@@ -80,12 +117,15 @@ int main(int argc, char** argv)
     iio_channel_enable(channel_i);
     iio_channel_enable(channel_q);
 
-    std::cout << "Creating non-cyclic buffer" << std::endl;
-    struct iio_buffer* buffer = iio_device_create_buffer(device, 1024 * 1024, false);
+    std::cout << "Creating buffer for " << buff_size * 1024 << " samples" << std::endl;
+    struct iio_buffer* buffer = iio_device_create_buffer(device, buff_size * 1024, false);
     assert(buffer != nullptr);
 
     std::chrono::time_point<std::chrono::system_clock> time1 =
         std::chrono::system_clock::now();
+
+    // https://github.com/analogdevicesinc/libiio/blob/master/tests/iio_adi_xflow_check.c
+    iio_device_reg_write(device, 0x80000088, 4);
 
     std::cout << "Starting streaming (press CTRL+C to cancel)" << std::endl;
     while (!stop) {
@@ -95,10 +135,10 @@ int main(int argc, char** argv)
             break;
         }
 
-        int16_t m0 = 0.0f;
-        int16_t m1 = 0.0f;
-        int16_t m2 = 0.0f;
-        int16_t m3 = 0.0f;
+        int16_t m0 = 0;
+        int16_t m1 = 0;
+        int16_t m2 = 0;
+        int16_t m3 = 0;
 
         int16_t* data = (int16_t*)iio_buffer_first(buffer, channel_i);
         int count = ((int16_t*)iio_buffer_end(buffer) - data) / 2;
@@ -129,9 +169,14 @@ int main(int argc, char** argv)
             std::chrono::duration_cast<std::chrono::microseconds>(time2 - time1).count();
         time1 = time2;
 
+        uint32_t irqs;
+        iio_device_reg_read(device, 0x80000088, &irqs);
+        iio_device_reg_write(device, 0x80000088, 4);
+        bool overflow = irqs & 4;
+
         std::cout << "Received " << count << " samples, " << std::fixed
                   << std::setprecision(3) << rate << " msps, max amplitude " << ampl
-                  << std::endl;
+                  << ", overflow " << (overflow ? "yes" : "no") << std::endl;
     }
 
     std::cout << "Destroying buffer" << std::endl;
