@@ -81,29 +81,29 @@ int main(int argc, char** argv)
     struct iio_device* phydev = iio_context_find_device(context, "ad9361-phy");
 
     std::cout << "Finding ad9361-phy rx1 controll channel" << std::endl;
-    struct iio_channel* chn = iio_device_find_channel(phydev, "voltage0", false);
-    assert(chn != nullptr);
+    struct iio_channel* channel_rx = iio_device_find_channel(phydev, "voltage0", false);
+    assert(channel_rx != nullptr);
 
     std::cout << "Setting rx port to A_BALANCED" << std::endl;
-    ssize_t ret = iio_channel_attr_write(chn, "rf_port_select", "A_BALANCED");
+    ssize_t ret = iio_channel_attr_write(channel_rx, "rf_port_select", "A_BALANCED");
     assert(ret >= 0);
 
     std::cout << "Setting rx bandwidth to " << bandwidth << " MHz" << std::endl;
-    ret = iio_channel_attr_write_longlong(chn, "rf_bandwidth", bandwidth * 1e6f);
+    ret = iio_channel_attr_write_longlong(channel_rx, "rf_bandwidth", bandwidth * 1e6f);
     assert(ret >= 0);
 
     std::cout << "Setting sampling frequency to " << samp_rate << " Msps" << std::endl;
-    ret = iio_channel_attr_write_longlong(chn, "sampling_frequency", samp_rate * 1e6f);
+    ret = iio_channel_attr_write_longlong(
+        channel_rx, "sampling_frequency", samp_rate * 1e6f);
     assert(ret >= 0);
 
     std::cout << "Finding ad9361-phy rx local oscillator channel" << std::endl;
-    chn = iio_device_find_channel(phydev, "altvoltage0", true);
-    assert(chn != nullptr);
+    struct iio_channel* channel_lo = iio_device_find_channel(phydev, "altvoltage0", true);
+    assert(channel_lo != nullptr);
 
     std::cout << "Setting center frequency to " << frequency << " GHz" << std::endl;
-    ret = iio_channel_attr_write_longlong(chn, "frequency", frequency * 1e9f);
+    ret = iio_channel_attr_write_longlong(channel_lo, "frequency", frequency * 1e9f);
     assert(ret >= 0);
-    (void)ret;
 
     std::cout << "Finding cf-ad9361-lpc device" << std::endl;
     struct iio_device* device = iio_context_find_device(context, "cf-ad9361-lpc");
@@ -112,6 +112,7 @@ int main(int argc, char** argv)
     std::cout << "Finding cf-ad9361-lpc streaming channels" << std::endl;
     struct iio_channel* channel_i = iio_device_find_channel(device, "voltage0", false);
     struct iio_channel* channel_q = iio_device_find_channel(device, "voltage1", false);
+    assert(channel_q != nullptr && channel_q != nullptr);
 
     std::cout << "Enabling cf-ad9361-lpc streaming channels" << std::endl;
     iio_channel_enable(channel_i);
