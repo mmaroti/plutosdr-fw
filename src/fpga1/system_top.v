@@ -84,9 +84,9 @@ module system_top (
   output          ad9363_spi_mosi,
   input           ad9363_spi_miso,
 
-  output          test_spi_clk,
-  output          test_spi_mosi,
-  input           test_spi_miso);
+  inout           test_pl_gpio0,
+  inout           test_pl_gpio1,
+  inout           test_pl_gpio2);
 
   // internal signals
 
@@ -143,10 +143,6 @@ module system_top (
     .ad9363_spi_csn (ad9363_spi_csn),
     .ad9363_spi_mosi (ad9363_spi_mosi),
     .ad9363_spi_miso (ad9363_spi_miso),
-
-    .test_spi_clk(test_spi_clk),
-    .test_spi_miso(test_spi_miso),
-    .test_spi_mosi(test_spi_mosi),
 
     .tx_clk_out (tx_clk_out),
     .tx_data_out (tx_data_out),

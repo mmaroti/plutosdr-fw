@@ -17,10 +17,6 @@ create_bd_port -dir I -from 16 -to 0 gpio_i
 create_bd_port -dir O -from 16 -to 0 gpio_o
 create_bd_port -dir O -from 16 -to 0 gpio_t
 
-create_bd_port -dir O test_spi_clk
-create_bd_port -dir I test_spi_miso
-create_bd_port -dir O test_spi_mosi
-
 # instance: sys_ps7
 
 ad_ip_instance processing_system7 sys_ps7
@@ -86,13 +82,6 @@ ad_ip_parameter sys_rstgen CONFIG.C_EXT_RST_WIDTH 1
 
 # system reset/clock definitions
 
-# add external spi
-
-ad_ip_instance axi_quad_spi axi_spi
-ad_ip_parameter axi_spi CONFIG.C_USE_STARTUP 0
-ad_ip_parameter axi_spi CONFIG.C_NUM_SS_BITS 1
-ad_ip_parameter axi_spi CONFIG.C_SCK_RATIO 8
-
 ad_connect  sys_cpu_clk sys_ps7/FCLK_CLK0
 ad_connect  sys_200m_clk sys_ps7/FCLK_CLK1
 ad_connect  sys_cpu_reset sys_rstgen/peripheral_reset
@@ -117,16 +106,6 @@ ad_connect  ad9363_spi_csn sys_ps7/SPI0_SS_O
 ad_connect  sys_ps7/SPI0_MOSI_I GND
 ad_connect  ad9363_spi_mosi sys_ps7/SPI0_MOSI_O
 ad_connect  ad9363_spi_miso sys_ps7/SPI0_MISO_I
-
-# axi spi connections
-
-ad_connect  sys_cpu_clk axi_spi/ext_spi_clk
-ad_connect  axi_spi/sck_i GND
-ad_connect  test_spi_clk axi_spi/sck_o
-ad_connect  axi_spi/ss_i VCC
-ad_connect  axi_spi/io0_i GND
-ad_connect  test_spi_mosi axi_spi/io0_o
-ad_connect  test_spi_miso axi_spi/io1_i
 
 # interrupts
 
@@ -298,7 +277,6 @@ ad_connect  cpack/fifo_wr_overflow axi_ad9361/adc_dovf
 ad_cpu_interconnect 0x79020000 axi_ad9361
 ad_cpu_interconnect 0x7C400000 axi_ad9361_adc_dma
 ad_cpu_interconnect 0x7C420000 axi_ad9361_dac_dma
-ad_cpu_interconnect 0x7C430000 axi_spi
 
 ad_ip_parameter sys_ps7 CONFIG.PCW_USE_S_AXI_HP1 {1}
 ad_connect sys_cpu_clk sys_ps7/S_AXI_HP1_ACLK
@@ -327,6 +305,3 @@ ad_connect sys_cpu_resetn axi_ad9361_dac_dma/m_src_axi_aresetn
 
 ad_cpu_interrupt ps-13 mb-13 axi_ad9361_adc_dma/irq
 ad_cpu_interrupt ps-12 mb-12 axi_ad9361_dac_dma/irq
-ad_cpu_interrupt ps-11 mb-11 axi_spi/ip2intc_irpt
-
-
