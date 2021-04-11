@@ -7,26 +7,37 @@ FPGA_DIR ?= src/fpga0
 # Set up variables
 
 ifeq (, $(shell which $(VIVADO_SETTINGS)))
-$(error Could not find $(VIVADO_SETTINGS))
+$(info Could not find $(VIVADO_SETTINGS))
+$(error Please set the VIVADO_SETTINGS environment variable)
+else
+$(info VIVADO_SETTINGS is $(VIVADO_SETTINGS))
 endif
 
 TOOLCHAIN = $(shell bash -c "source $(VIVADO_SETTINGS) && which $(CROSS_COMPILE)gcc")
 
 ifeq (, $(TOOLCHAIN))
 $(error Could not find $(CROSS_COMPILE)gcc in PATH)
+else
+$(info TOOLCHAIN is $(TOOLCHAIN))
 endif
 
 ifeq (, $(shell which dfu-suffix))
-$(error Could not find dfu-utils in PATH")
+$(error Please install the dfu-util package")
+endif
+
+ifeq (, $(shell which dtc))
+$(error Please install the device-tree-compiler package")
+endif
+
+ifeq (, $(wildcard $(FPGA_DIR)))
+$(error FPGA directory $(FPGA_DIR) does not exists)
+else
+$(info FPGA_DIR is $(FPGA_DIR))
 endif
 
 NCORES = $(shell nproc)
 DEVICE_VID := 0x0456
 DEVICE_PID := 0xb673
-
-$(info VIVADO_SETTINGS is $(VIVADO_SETTINGS))
-$(info TOOLCHAIN is $(TOOLCHAIN))
-$(info FPGA_DIR is $(FPGA_DIR))
 
 # Main targets
 
