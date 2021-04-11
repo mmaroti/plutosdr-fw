@@ -29,19 +29,17 @@
 
 &uart0 {
 	current-speed = <115200>;
-	port-number = <0>;
 	status = "okay";
 };
 
 &uart1 {
 	current-speed = <115200>;
-	port-number = <1>;
 	status = "okay";
 };
 
 &aliases {
-	serial0 = &uart0;
-	serial1 = &uart1;
+	serial0 = &uart1;
+	serial1 = &uart0;
 };
 
 / {

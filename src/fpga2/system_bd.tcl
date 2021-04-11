@@ -60,7 +60,7 @@ ad_ip_parameter sys_ps7 CONFIG.PCW_MIO_11_PULLUP {enabled}
 ad_ip_parameter sys_ps7 CONFIG.PCW_MIO_48_PULLUP {enabled}
 ad_ip_parameter sys_ps7 CONFIG.PCW_MIO_49_PULLUP {disabled}
 ad_ip_parameter sys_ps7 CONFIG.PCW_MIO_53_PULLUP {enabled}
-ad_ip_parameter sys_ps7 CONFIG.PCW_UART0_PERIPHERAL_ENABLE 1 
+ad_ip_parameter sys_ps7 CONFIG.PCW_UART0_PERIPHERAL_ENABLE 1
 ad_ip_parameter sys_ps7 CONFIG.PCW_UART0_UART0_IO {EMIO}
 
 # DDR MT41K256M16 HA-125 (32M, 16bit, 8banks)
@@ -133,11 +133,11 @@ ad_connect  sys_concat_intc/In0 GND
 
 create_bd_port -dir O rs232_clock
 create_bd_port -dir O rs232_resetn
-create_bd_port -dir I rs232_tx
+create_bd_port -dir I rs232_txd
 
 ad_connect  sys_cpu_clk rs232_clock
 ad_connect  sys_cpu_resetn rs232_resetn
-ad_connect  rs232_tx sys_ps7/UART0_RX
+ad_connect  rs232_txd sys_ps7/UART0_RX
 
 # iic
 
