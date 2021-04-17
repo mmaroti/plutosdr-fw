@@ -129,16 +129,6 @@ ad_connect  sys_concat_intc/In2 GND
 ad_connect  sys_concat_intc/In1 GND
 ad_connect  sys_concat_intc/In0 GND
 
-# rs232
-
-create_bd_port -dir O rs232_clock
-create_bd_port -dir O rs232_resetn
-create_bd_port -dir I rs232_txd
-
-ad_connect  sys_cpu_clk rs232_clock
-ad_connect  sys_cpu_resetn rs232_resetn
-ad_connect  rs232_txd sys_ps7/UART0_RX
-
 # iic
 
 create_bd_intf_port -mode Master -vlnv xilinx.com:interface:iic_rtl:1.0 adm1177_iic

@@ -8,7 +8,6 @@ adi_project pluto
 
 adi_project_files pluto [list \
   "system_top.v" \
-  "rs232tx.v" \
   "system_constr.xdc" \
   "$ad_hdl_dir/library/common/ad_iobuf.v"]
 

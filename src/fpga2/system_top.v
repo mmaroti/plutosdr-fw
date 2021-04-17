@@ -107,37 +107,6 @@ module system_top (
 
   assign gpio_i[16:14] = gpio_o[16:14];
 
-  wire rs232_clock;
-  wire rs232_resetn;
-  wire rs232_txd;
-
-  wire rs232_iready;
-  reg [4:0] rs232_counter;
-  wire [7:0] rs232_idata;
-
-  assign rs232_idata = {3'b010, rs232_counter};
-
-  always @(posedge rs232_clock or negedge rs232_resetn)
-  begin
-    if (!rs232_resetn)
-      rs232_counter <= 5'd0;
-    else if (rs232_iready)
-      rs232_counter <= rs232_counter + 5'd1;
-  end
-
-  axis_to_rs232 #(
-    .CLOCK_FREQ (100000000),
-    .BAUD_RATE (115200)
-  ) i_axis_to_rs232 (
-    .clock (rs232_clock),
-    .resetn (rs232_resetn),
-    .idata (rs232_idata),
-    .ivalid (1'b1),
-    .iready (rs232_iready),
-    .txd (rs232_txd),
-    .ctsn (1'b0)
-  );
-
   system_wrapper i_system_wrapper (
     .ddr_addr (ddr_addr),
     .ddr_ba (ddr_ba),
@@ -180,11 +149,7 @@ module system_top (
     .tx_frame_out (tx_frame_out),
     .ad9363_txnrx (ad9363_txnrx),
     .up_enable (gpio_o[15]),
-    .up_txnrx (gpio_o[16]),
-
-    .rs232_clock(rs232_clock),
-    .rs232_resetn(rs232_resetn),
-    .rs232_txd(rs232_txd));
+    .up_txnrx (gpio_o[16]));
 
 endmodule
 
